@@ -395,7 +395,7 @@
         <div id="selection-screen" class="selection-screen">
             <h1 class="text-4xl md:text-5xl text-purple-400 mb-8 text-center">CHARACTER SELECT</h1>
             
-            <div class="grid grid-cols-2 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <!-- Player 1 Selection -->
                 <div class="bg-gray-800 p-6 rounded-lg border-2 border-red-500">
                     <h2 class="text-red-400 text-center mb-4">PLAYER 1</h2>
@@ -595,8 +595,8 @@
         // Game state and functions
         let gameState = null;
         let selectedCharacters = {
-            player1: null,
-            player2: null
+            player1: "warrior",
+            player2: "warrior"
         };
         
         // Use window.onload to ensure everything is loaded
@@ -610,6 +610,16 @@
             const startButton = document.getElementById('start-button');
             const p1SelectionText = document.getElementById('player1-selection');
             const p2SelectionText = document.getElementById('player2-selection');
+            
+            // Set default selections
+            document.querySelector('.character-option[data-player="1"][data-character="warrior"]').classList.add('selected');
+            document.querySelector('.character-option[data-player="2"][data-character="warrior"]').classList.add('selected');
+            p1SelectionText.textContent = 'Selected: Warrior';
+            p2SelectionText.textContent = 'Selected: Warrior';
+            
+            // Enable start button since we have defaults
+            startButton.disabled = false;
+            startButton.classList.remove('opacity-50');
             
             characterOptions.forEach(option => {
                 option.addEventListener('click', () => {
@@ -628,16 +638,17 @@
                     selectedCharacters[`player${player}`] = character;
                     
                     // Update selection text
-                    if (player === '1') {
-                        p1SelectionText.textContent = `Selected: ${character.charAt(0).toUpperCase() + character.slice(1)}`;
-                    } else {
-                        p2SelectionText.textContent = `Selected: ${character.charAt(0).toUpperCase() + character.slice(1)}`;
-                    }
+                    const classNames = {
+                        'warrior': 'Warrior',
+                        'mage': 'Mage',
+                        'archer': 'Archer',
+                        'ninja': 'Ninja'
+                    };
                     
-                    // Enable start button if both players have selected
-                    if (selectedCharacters.player1 && selectedCharacters.player2) {
-                        startButton.disabled = false;
-                        startButton.classList.remove('opacity-50');
+                    if (player === '1') {
+                        p1SelectionText.textContent = `Selected: ${classNames[character]}`;
+                    } else {
+                        p2SelectionText.textContent = `Selected: ${classNames[character]}`;
                     }
                 });
             });
@@ -723,7 +734,7 @@
                 punch: { damage: 10, animationClass: 'punch-anim', sound: sounds.punch, element: () => document.createElement('div') },
                 knife: { damage: 25, animationClass: 'slash-anim', sound: sounds.knife, element: () => document.createElement('div') },
                 fireball: { damage: 35, animationClass: 'fireball-anim', sound: sounds.fireball, element: () => document.createElement('div') },
-                heal: { damage: -25, animationClass: 'heal-anim', sound: sounds.heal, element: () => document.createElement('div') }
+                heal: { damage: -25, animationClass: 'heal-anim', sound: sounds.heal, element: () => document.createElement('div'), isHeal: true }
             };
 
             // --- Game Logic ---
@@ -743,7 +754,12 @@
                             player1Elem.classList.remove('character-attack');
                         }, 300);
                         
-                        executeAttack('player1', 'player2', command);
+                        // For heal, target yourself, otherwise target opponent
+                        if (command.isHeal) {
+                            executeAttack('player1', 'player1', command);
+                        } else {
+                            executeAttack('player1', 'player2', command);
+                        }
                     } else {
                         commandInput2.disabled = true;
                         infoText2.textContent = `Used ${commandStr}!`;
@@ -753,7 +769,12 @@
                             player2Elem.classList.remove('character-attack');
                         }, 300);
                         
-                        executeAttack('player2', 'player1', command);
+                        // For heal, target yourself, otherwise target opponent
+                        if (command.isHeal) {
+                            executeAttack('player2', 'player2', command);
+                        } else {
+                            executeAttack('player2', 'player1', command);
+                        }
                     }
                     
                     // Reset after a short cooldown
@@ -799,6 +820,13 @@
                     attackElement.style.transformOrigin = 'center';
                     attackElement.style.transform = 'scaleX(-1)';
                 }
+                
+                // For healing, position the effect on the target
+                if (command.isHeal) {
+                    attackElement.style.left = '50%';
+                    attackElement.style.transform = 'translateX(-50%)';
+                }
+                
                 attackElement.style.top = `${attacker.offsetTop + attacker.offsetHeight/4}px`;
 
                 setTimeout(() => {
@@ -816,9 +844,11 @@
                     updateHealthBar(targetId, targetState.currentHealth, targetState.maxHealth);
                     
                     // Visual feedback
-                    sounds.hit();
-                    gameContainer.classList.add('shake');
-                    target.classList.add('character-hit');
+                    if (!command.isHeal) {
+                        sounds.hit();
+                        gameContainer.classList.add('shake');
+                        target.classList.add('character-hit');
+                    }
                     
                     if (command.damage > 30) { // Critical hit flash
                         flashEffect.classList.add('flash-active');
@@ -863,3 +893,78 @@
                 healthBar.style.width = `${percentage}%`;
                 healthBar.textContent = Math.max(0, Math.round(currentHealth));
                 
+                if (percentage < 25) {
+                    healthBar.style.backgroundColor = '#ef4444'; // red-500
+                } else if (percentage < 60) {
+                    healthBar.style.backgroundColor = '#f59e0b'; // amber-500
+                } else {
+                    healthBar.style.backgroundColor = '#22c55e'; // green-500
+                }
+            };
+            
+            const checkGameOver = () => {
+                if (gameState.player1.currentHealth <= 0 || gameState.player2.currentHealth <= 0) {
+                    gameState.gameOver = true;
+                    gameState.cooldown = true;
+                    commandInput1.disabled = true;
+                    commandInput2.disabled = true;
+                    
+                    let winner;
+                    if (gameState.player1.currentHealth <= 0) {
+                        winner = 'Player 2 Wins!';
+                        infoText1.textContent = 'Defeated!';
+                        infoText2.textContent = 'Victory!';
+                        sounds.gameOver();
+                    } else {
+                        winner = 'Player 1 Wins!';
+                        infoText1.textContent = 'Victory!';
+                        infoText2.textContent = 'Defeated!';
+                        sounds.win();
+                    }
+                    winnerText.textContent = winner;
+                    gameOverModal.classList.remove('hidden');
+                }
+            };
+            
+            const resetGame = () => {
+                gameState = {
+                    player1: { maxHealth: 100, currentHealth: 100 },
+                    player2: { maxHealth: 100, currentHealth: 100 },
+                    gameOver: false,
+                    cooldown: false
+                };
+                updateHealthBar('player1', 100, 100);
+                updateHealthBar('player2', 100, 100);
+                gameOverModal.classList.add('hidden');
+                commandInput1.disabled = false;
+                commandInput2.disabled = false;
+                commandInput1.value = '';
+                commandInput2.value = '';
+                infoText1.textContent = 'Type a command!';
+                infoText2.textContent = 'Type a command!';
+                
+                // Focus on player 1 input
+                commandInput1.focus();
+            };
+            
+            // --- Event Listeners ---
+            commandInput1.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleCommand(1, e.target.value);
+                }
+            });
+            
+            commandInput2.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleCommand(2, e.target.value);
+                }
+            });
+            
+            restartButton.addEventListener('click', resetGame);
+
+            // --- Initial Setup ---
+            resetGame();
+        }
+    </script>
+</body>
+</html>
