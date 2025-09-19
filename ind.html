@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Fighter - Character Select</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a game-like feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles and animations */
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e0e0e0;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Health bar fill animation */
+        .health-fill {
+            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
+
+        /* Main game container */
+        .game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            height: auto;
+            min-height: 90vh;
+            overflow: hidden;
+            border: 4px solid #6d28d9;
+            border-radius: 12px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%230b1021" width="100" height="100"/><path fill="%23131729" d="M0 0h100v100H0zM50 50L0 0v100l50-50zm50 0l50 50V0l-50 50z"/></svg>');
+            box-shadow: 0 0 20px rgba(109, 40, 217, 0.5);
+        }
+
+        /* Selection screen */
+        .selection-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        /* Character selection */
+        .character-option {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 4px solid transparent;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .character-option:hover {
+            transform: scale(1.05);
+            border-color: #8b5cf6;
+        }
+
+        .character-option.selected {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        /* Fighter character styling */
+        .fighter-char {
+            transition: transform 0.2s ease-out;
+            z-index: 10;
+            position: relative;
+        }
+
+        /* Screen shake animation on hit */
+        @keyframes screen-shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-5px, 5px); }
+            40% { transform: translate(5px, -5px); }
+            60% { transform: translate(-5px, -5px); }
+            80% { transform: translate(5px, 5px); }
+        }
+        .shake {
+            animation: screen-shake 0.3s linear;
+        }
+
+        /* Flash animation on critical hit */
+        @keyframes screen-flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.7; }
+        }
+        .flash-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .flash-active {
+            animation: screen-flash 0.2s ease-out;
+        }
+        
+        /* Attack animations */
+        @keyframes punch-attack {
+            0% { transform: translateX(0) scale(0.5); opacity: 0; }
+            50% { transform: translateX(20vw) scale(1); opacity: 1; }
+            100% { transform: translateX(40vw) scale(0.5); opacity: 0; }
+        }
+        .punch-anim {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(255,255,0,0.8) 0%, rgba(255,165,0,0) 70%);
+            border-radius: 50%;
+            position: absolute;
+            animation: punch-attack 0.4s ease-out forwards;
+            z-index: 5;
+        }
+        
+        /* Slash animation for knife */
+        @keyframes slash-effect {
+            0% { transform: translateX(5vw) scale(0.5) rotate(-45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(35vw) scale(1.5) rotate(45deg); opacity: 0; }
+        }
+        .slash-anim {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-top: 5px solid #e0e0e0;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 8px #ffffff);
+            animation: slash-effect 0.4s ease-out forwards;
+            z-index: 5;
+        }
+
+        /* Fireball animation */
+        @keyframes fireball-attack {
+            0% { transform: translateX(0) scale(0.2); opacity: 0; box-shadow: 0 0 10px #ff4500; }
+            20% { opacity: 1; }
+            50% { transform: translateX(20vw) scale(1.2); box-shadow: 0 0 40px #ff8c00, 0 0 50px #ff4500; }
+            100% { transform: translateX(40vw) scale(2.5); opacity: 0; box-shadow: 0 0 10px #ff4500; }
+        }
+        .fireball-anim {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ff6347, #ff4500, transparent 60%);
+            border-radius: 50%;
+            position: absolute;
+            animation: fireball-attack 0.7s ease-in forwards;
+            z-index: 5;
+        }
+
+        @keyframes heal-effect {
+            0% { opacity: 0; transform: translateY(20px) scale(0.5); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+        }
+        .heal-anim {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(0,255,127,0.7) 0%, rgba(50,205,50,0) 70%);
+            border-radius: 50%;
+            position: absolute;
+            animation: heal-effect 1s ease-out forwards;
+            z-index: 5;
+        }
+        
+        /* Character animations */
+        @keyframes character-hit {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(10px); }
+            50% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+            100% { transform: translateX(0); }
+        }
+        .character-hit {
+            animation: character-hit 0.4s ease;
+        }
+        
+        @keyframes character-attack {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(20px); }
+            100% { transform: translateX(0); }
+        }
+        .character-attack {
+            animation: character-attack 0.3s ease;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        .character-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Improved character styling */
+        .character {
+            width: 120px;
+            height: 180px;
+            position: relative;
+        }
+        
+        .character-head {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 30px;
+            z-index: 2;
+        }
+        
+        .character-body {
+            width: 20px;
+            height: 70px;
+            position: absolute;
+            top: 55px;
+            left: 50px;
+            z-index: 1;
+        }
+        
+        .character-arm {
+            width: 12px;
+            height: 50px;
+            position: absolute;
+            top: 60px;
+            border-radius: 6px;
+            z-index: 1;
+        }
+        
+        .character-leg {
+            width: 15px;
+            height: 60px;
+            position: absolute;
+            top: 120px;
+            border-radius: 4px;
+            z-index: 1;
+        }
+        
+        .player1 .character-head {
+            background: #ff4500;
+            box-shadow: 0 0 10px #ff4500;
+        }
+        
+        .player1 .character-body {
+            background: #ff6b35;
+        }
+        
+        .player1 .character-arm {
+            background: #ff6b35;
+        }
+        
+        .player1 .character-leg {
+            background: #ff6b35;
+        }
+        
+        .player2 .character-head {
+            background: #00bfff;
+            box-shadow: 0 0 10px #00bfff;
+        }
+        
+        .player2 .character-body {
+            background: #4cc9f0;
+        }
+        
+        .player2 .character-arm {
+            background: #4cc9f0;
+        }
+        
+        .player2 .character-leg {
+            background: #4cc9f0;
+        }
+        
+        .arm-left {
+            left: 30px;
+            transform-origin: top center;
+        }
+        
+        .arm-right {
+            left: 78px;
+            transform-origin: top center;
+        }
+        
+        .leg-left {
+            left: 42px;
+            transform-origin: top center;
+        }
+        
+        .leg-right {
+            left: 63px;
+            transform-origin: top center;
+        }
+        
+        .attack .arm-right {
+            animation: punch 0.3s ease;
+        }
+        
+        @keyframes punch {
+            0% { transform: rotate(0); }
+            50% { transform: rotate(-45deg); }
+            100% { transform: rotate(0); }
+        }
+        
+        /* Input styling */
+        .command-input {
+            transition: all 0.3s ease;
+        }
+        
+        .command-input:focus {
+            box-shadow: 0 0 10px #8b5cf6;
+        }
+        
+        .damage-text {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 20;
+            pointer-events: none;
+            animation: damageFloat 1s ease-out forwards;
+        }
+        
+        @keyframes damageFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        /* Character variants */
+        .character.warrior .character-head {
+            background: #ff4500;
+            box-shadow: 0 0 10px #ff4500;
+        }
+        
+        .character.warrior .character-body,
+        .character.warrior .character-arm,
+        .character.warrior .character-leg {
+            background: #ff6b35;
+        }
+
+        .character.mage .character-head {
+            background: #9b59b6;
+            box-shadow: 0 0 10px #9b59b6;
+        }
+        
+        .character.mage .character-body,
+        .character.mage .character-arm,
+        .character.mage .character-leg {
+            background: #8e44ad;
+        }
+
+        .character.archer .character-head {
+            background: #2ecc71;
+            box-shadow: 0 0 10px #2ecc71;
+        }
+        
+        .character.archer .character-body,
+        .character.archer .character-arm,
+        .character.archer .character-leg {
+            background: #27ae60;
+        }
+
+        .character.ninja .character-head {
+            background: #34495e;
+            box-shadow: 0 0 10px #34495e;
+        }
+        
+        .character.ninja .character-body,
+        .character.ninja .character-arm,
+        .character.ninja .character-leg {
+            background: #2c3e50;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <div id="game-container" class="game-container mx-auto my-4 p-4 md:p-8 flex flex-col items-center">
+        <!-- Selection Screen -->
+        <div id="selection-screen" class="selection-screen">
+            <h1 class="text-4xl md:text-5xl text-purple-400 mb-8 text-center">CHARACTER SELECT</h1>
+            
+            <div class="grid grid-cols-2 gap-6 mb-8">
+                <!-- Player 1 Selection -->
+                <div class="bg-gray-800 p-6 rounded-lg border-2 border-red-500">
+                    <h2 class="text-red-400 text-center mb-4">PLAYER 1</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="character-option" data-player="1" data-character="warrior">
+                            <div class="character warrior mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Warrior</p>
+                        </div>
+                        <div class="character-option" data-player="1" data-character="mage">
+                            <div class="character mage mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Mage</p>
+                        </div>
+                        <div class="character-option" data-player="1" data-character="archer">
+                            <div class="character archer mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Archer</p>
+                        </div>
+                        <div class="character-option" data-player="1" data-character="ninja">
+                            <div class="character ninja mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Ninja</p>
+                        </div>
+                    </div>
+                    <div id="player1-selection" class="text-center mt-4 text-yellow-400">Select a character</div>
+                </div>
+                
+                <!-- Player 2 Selection -->
+                <div class="bg-gray-800 p-6 rounded-lg border-2 border-blue-500">
+                    <h2 class="text-blue-400 text-center mb-4">PLAYER 2</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="character-option" data-player="2" data-character="warrior">
+                            <div class="character warrior mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Warrior</p>
+                        </div>
+                        <div class="character-option" data-player="2" data-character="mage">
+                            <div class="character mage mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Mage</p>
+                        </div>
+                        <div class="character-option" data-player="2" data-character="archer">
+                            <div class="character archer mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Archer</p>
+                        </div>
+                        <div class="character-option" data-player="2" data-character="ninja">
+                            <div class="character ninja mx-auto">
+                                <div class="character-head"></div>
+                                <div class="character-body"></div>
+                                <div class="character-arm arm-left"></div>
+                                <div class="character-arm arm-right"></div>
+                                <div class="character-leg leg-left"></div>
+                                <div class="character-leg leg-right"></div>
+                            </div>
+                            <p class="text-center mt-2 text-sm">Ninja</p>
+                        </div>
+                    </div>
+                    <div id="player2-selection" class="text-center mt-4 text-yellow-400">Select a character</div>
+                </div>
+            </div>
+            
+            <button id="start-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-xl opacity-50" disabled>
+                START BATTLE
+            </button>
+        </div>
+
+        <!-- Screen Flash Effect -->
+        <div id="flash-effect" class="flash-effect"></div>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal" class="hidden absolute inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50">
+            <h2 id="winner-text" class="text-4xl md:text-6xl text-yellow-400 mb-8 text-center"></h2>
+            <button id="restart-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-lg text-2xl">
+                Play Again
+            </button>
+        </div>
+
+        <h1 class="text-3xl md:text-4xl text-purple-400 mb-2 text-center">COMMENT FIGHTER</h1>
+        <p class="text-yellow-400 mb-6 text-center">Type commands to attack your opponent!</p>
+
+        <!-- Header: Health Bars -->
+        <div class="w-full max-w-4xl flex justify-between gap-4 mb-8">
+            <!-- Player 1 Health -->
+            <div class="w-1/2 bg-black border-4 border-red-500 rounded-lg p-1">
+                <div class="text-red-500 text-xs mb-1">PLAYER 1 - <span id="p1-class">Warrior</span></div>
+                <div id="player1-health" class="health-fill bg-green-500 h-6 rounded-md text-right pr-2 text-sm text-black font-bold" style="width: 100%;">
+                    100
+                </div>
+            </div>
+            <!-- Player 2 Health -->
+            <div class="w-1/2 bg-black border-4 border-blue-500 rounded-lg p-1">
+                <div class="text-blue-500 text-xs mb-1 text-right">PLAYER 2 - <span id="p2-class">Warrior</span></div>
+                <div id="player2-health" class="health-fill bg-green-500 h-6 rounded-md text-right pr-2 text-sm text-black font-bold" style="width: 100%;">
+                    100
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Arena -->
+        <div class="w-full flex-grow flex items-center justify-around relative mb-8">
+            <!-- Player 1 -->
+            <div id="player1" class="fighter-char player1 character warrior character-float">
+                <div class="character-head"></div>
+                <div class="character-body"></div>
+                <div class="character-arm arm-left"></div>
+                <div class="character-arm arm-right"></div>
+                <div class="character-leg leg-left"></div>
+                <div class="character-leg leg-right"></div>
+            </div>
+
+            <!-- VS Text -->
+            <div class="text-2xl text-yellow-400 font-bold bg-black px-4 py-2 rounded-lg z-10">VS</div>
+
+            <!-- Attack Animation Area -->
+            <div id="attack-zone" class="absolute top-1/2 left-0 w-full h-1/2 -translate-y-1/2 flex items-center"></div>
+
+            <!-- Player 2 -->
+            <div id="player2" class="fighter-char player2 character warrior character-float" style="transform: scaleX(-1);">
+                <div class="character-head"></div>
+                <div class="character-body"></div>
+                <div class="character-arm arm-left"></div>
+                <div class="character-arm arm-right"></div>
+                <div class="character-leg leg-left"></div>
+                <div class="character-leg leg-right"></div>
+            </div>
+        </div>
+
+        <!-- Command Inputs -->
+        <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <!-- Player 1 Input -->
+            <div class="bg-gray-800 p-4 rounded-lg border-2 border-red-500">
+                <h3 class="text-red-400 text-center mb-2">PLAYER 1 CONTROLS</h3>
+                <p id="info-text-1" class="text-center mb-2 text-yellow-300 h-6">Type a command!</p>
+                <input type="text" id="command-input-1" placeholder="punch, knife, fireball, heal" class="command-input w-full p-3 bg-gray-700 border border-red-500 rounded-lg text-center focus:outline-none">
+                <div class="mt-2 text-center text-sm text-red-300">
+                    <p>Commands: punch (10 dmg), knife (25 dmg), fireball (35 dmg), heal (25 hp)</p>
+                </div>
+            </div>
+            
+            <!-- Player 2 Input -->
+            <div class="bg-gray-800 p-4 rounded-lg border-2 border-blue-500">
+                <h3 class="text-blue-400 text-center mb-2">PLAYER 2 CONTROLS</h3>
+                <p id="info-text-2" class="text-center mb-2 text-yellow-300 h-6">Type a command!</p>
+                <input type="text" id="command-input-2" placeholder="punch, knife, fireball, heal" class="command-input w-full p-3 bg-gray-700 border border-blue-500 rounded-lg text-center focus:outline-none">
+                <div class="mt-2 text-center text-sm text-blue-300">
+                    <p>Commands: punch (10 dmg), knife (25 dmg), fireball (35 dmg), heal (25 hp)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state and functions
+        let gameState = null;
+        let selectedCharacters = {
+            player1: null,
+            player2: null
+        };
+        
+        // Use window.onload to ensure everything is loaded
+        window.onload = () => {
+            // Initialize the game
+            setupSelectionScreen();
+        };
+
+        function setupSelectionScreen() {
+            const characterOptions = document.querySelectorAll('.character-option');
+            const startButton = document.getElementById('start-button');
+            const p1SelectionText = document.getElementById('player1-selection');
+            const p2SelectionText = document.getElementById('player2-selection');
+            
+            characterOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const player = option.getAttribute('data-player');
+                    const character = option.getAttribute('data-character');
+                    
+                    // Remove selected class from all options for this player
+                    document.querySelectorAll(`.character-option[data-player="${player}"]`).forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Add selected class to clicked option
+                    option.classList.add('selected');
+                    
+                    // Store selection
+                    selectedCharacters[`player${player}`] = character;
+                    
+                    // Update selection text
+                    if (player === '1') {
+                        p1SelectionText.textContent = `Selected: ${character.charAt(0).toUpperCase() + character.slice(1)}`;
+                    } else {
+                        p2SelectionText.textContent = `Selected: ${character.charAt(0).toUpperCase() + character.slice(1)}`;
+                    }
+                    
+                    // Enable start button if both players have selected
+                    if (selectedCharacters.player1 && selectedCharacters.player2) {
+                        startButton.disabled = false;
+                        startButton.classList.remove('opacity-50');
+                    }
+                });
+            });
+            
+            startButton.addEventListener('click', () => {
+                document.getElementById('selection-screen').style.display = 'none';
+                document.getElementById('p1-class').textContent = selectedCharacters.player1.charAt(0).toUpperCase() + selectedCharacters.player1.slice(1);
+                document.getElementById('p2-class').textContent = selectedCharacters.player2.charAt(0).toUpperCase() + selectedCharacters.player2.slice(1);
+                
+                // Update character classes
+                document.getElementById('player1').className = `fighter-char player1 character ${selectedCharacters.player1} character-float`;
+                document.getElementById('player2').className = `fighter-char player2 character ${selectedCharacters.player2} character-float`;
+                
+                startGame();
+            });
+        }
+
+        function startGame() {
+            // --- DOM Elements ---
+            const gameContainer = document.getElementById('game-container');
+            const commandInput1 = document.getElementById('command-input-1');
+            const commandInput2 = document.getElementById('command-input-2');
+            const player1HealthBar = document.getElementById('player1-health');
+            const player2HealthBar = document.getElementById('player2-health');
+            const player1Elem = document.getElementById('player1');
+            const player2Elem = document.getElementById('player2');
+            const attackZone = document.getElementById('attack-zone');
+            const gameOverModal = document.getElementById('game-over-modal');
+            const winnerText = document.getElementById('winner-text');
+            const restartButton = document.getElementById('restart-button');
+            const infoText1 = document.getElementById('info-text-1');
+            const infoText2 = document.getElementById('info-text-2');
+            const flashEffect = document.getElementById('flash-effect');
+
+            // --- Game State ---
+            gameState = {
+                player1: { maxHealth: 100, currentHealth: 100 },
+                player2: { maxHealth: 100, currentHealth: 100 },
+                gameOver: false,
+                cooldown: false
+            };
+
+            // Sound effects using the Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            const playSound = (frequency, duration, type = 'sine') => {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = type;
+                oscillator.frequency.value = frequency;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + duration);
+            };
+            
+            const sounds = {
+                punch: () => playSound(150, 0.2),
+                hit: () => playSound(300, 0.1),
+                knife: () => playSound(200, 0.3, 'sawtooth'),
+                fireball: () => playSound(100, 0.5, 'square'),
+                heal: () => playSound(600, 0.4),
+                miss: () => playSound(100, 0.2),
+                gameOver: () => playSound(200, 1.0),
+                win: () => {
+                    playSound(523.25, 0.2); // C5
+                    setTimeout(() => playSound(659.25, 0.2), 200); // E5
+                    setTimeout(() => playSound(783.99, 0.4), 400); // G5
+                }
+            };
+            
+            // --- Command Definitions ---
+            const commands = {
+                punch: { damage: 10, animationClass: 'punch-anim', sound: sounds.punch, element: () => document.createElement('div') },
+                knife: { damage: 25, animationClass: 'slash-anim', sound: sounds.knife, element: () => document.createElement('div') },
+                fireball: { damage: 35, animationClass: 'fireball-anim', sound: sounds.fireball, element: () => document.createElement('div') },
+                heal: { damage: -25, animationClass: 'heal-anim', sound: sounds.heal, element: () => document.createElement('div') }
+            };
+
+            // --- Game Logic ---
+            const handleCommand = (player, commandStr) => {
+                if (gameState.gameOver || gameState.cooldown) return;
+
+                const command = commands[commandStr.toLowerCase().trim()];
+                if (command) {
+                    gameState.cooldown = true;
+                    
+                    if (player === 1) {
+                        commandInput1.disabled = true;
+                        infoText1.textContent = `Used ${commandStr}!`;
+                        // Add attack animation to player
+                        player1Elem.classList.add('character-attack');
+                        setTimeout(() => {
+                            player1Elem.classList.remove('character-attack');
+                        }, 300);
+                        
+                        executeAttack('player1', 'player2', command);
+                    } else {
+                        commandInput2.disabled = true;
+                        infoText2.textContent = `Used ${commandStr}!`;
+                        // Add attack animation to player
+                        player2Elem.classList.add('character-attack');
+                        setTimeout(() => {
+                            player2Elem.classList.remove('character-attack');
+                        }, 300);
+                        
+                        executeAttack('player2', 'player1', command);
+                    }
+                    
+                    // Reset after a short cooldown
+                    setTimeout(() => {
+                        commandInput1.disabled = false;
+                        commandInput2.disabled = false;
+                        commandInput1.value = '';
+                        commandInput2.value = '';
+                        infoText1.textContent = 'Type a command!';
+                        infoText2.textContent = 'Type a command!';
+                        gameState.cooldown = false;
+                    }, 1500);
+                } else {
+                    if (player === 1) {
+                        infoText1.textContent = `Unknown command: "${commandStr}"`;
+                        sounds.miss();
+                        setTimeout(() => { infoText1.textContent = 'Type a command!'; }, 1500);
+                    } else {
+                        infoText2.textContent = `Unknown command: "${commandStr}"`;
+                        sounds.miss();
+                        setTimeout(() => { infoText2.textContent = 'Type a command!'; }, 1500);
+                    }
+                }
+            };
+
+            const executeAttack = (attackerId, targetId, command) => {
+                // Play sound
+                command.sound();
+
+                // Create and animate the attack element
+                const attackElement = command.element();
+                attackElement.className = command.animationClass;
+                attackZone.appendChild(attackElement);
+                
+                const attacker = (attackerId === 'player1') ? player1Elem : player2Elem;
+                const target = (targetId === 'player1') ? player1Elem : player2Elem;
+                
+                // Position and style the attack based on attacker
+                if (attackerId === 'player1') {
+                    attackElement.style.left = '25%';
+                } else {
+                    attackElement.style.right = '25%';
+                    attackElement.style.transformOrigin = 'center';
+                    attackElement.style.transform = 'scaleX(-1)';
+                }
+                attackElement.style.top = `${attacker.offsetTop + attacker.offsetHeight/4}px`;
+
+                setTimeout(() => {
+                    // Update health
+                    let targetState = (targetId === 'player1') ? gameState.player1 : gameState.player2;
+                    const previousHealth = targetState.currentHealth;
+                    targetState.currentHealth -= command.damage;
+                    
+                    // Ensure health doesn't go below 0 or above max
+                    targetState.currentHealth = Math.max(0, Math.min(targetState.currentHealth, targetState.maxHealth));
+                    
+                    // Show damage text
+                    showDamageText(target, command.damage, command.damage > 0);
+                    
+                    updateHealthBar(targetId, targetState.currentHealth, targetState.maxHealth);
+                    
+                    // Visual feedback
+                    sounds.hit();
+                    gameContainer.classList.add('shake');
+                    target.classList.add('character-hit');
+                    
+                    if (command.damage > 30) { // Critical hit flash
+                        flashEffect.classList.add('flash-active');
+                    }
+                    
+                    // Remove animations after they finish
+                    setTimeout(() => {
+                        gameContainer.classList.remove('shake');
+                        flashEffect.classList.remove('flash-active');
+                        target.classList.remove('character-hit');
+                        if (attackElement.parentNode) {
+                            attackElement.parentNode.removeChild(attackElement);
+                        }
+                         // Check for game over
+                        checkGameOver();
+                    }, 300);
+
+                }, (command.animationClass.includes('fireball') ? 700 : 500));
+            };
+            
+            const showDamageText = (target, amount, isDamage = true) => {
+                const damageText = document.createElement('div');
+                damageText.className = 'damage-text';
+                damageText.textContent = isDamage ? `-${amount}` : `+${-amount}`;
+                damageText.style.color = isDamage ? '#ff4444' : '#44ff44';
+                
+                const rect = target.getBoundingClientRect();
+                damageText.style.left = `${rect.left + rect.width/2}px`;
+                damageText.style.top = `${rect.top}px`;
+                
+                document.body.appendChild(damageText);
+                
+                // Remove after animation completes
+                setTimeout(() => {
+                    document.body.removeChild(damageText);
+                }, 1000);
+            };
+
+            const updateHealthBar = (playerId, currentHealth, maxHealth) => {
+                const healthBar = (playerId === 'player1') ? player1HealthBar : player2HealthBar;
+                const percentage = Math.max(0, (currentHealth / maxHealth) * 100);
+                healthBar.style.width = `${percentage}%`;
+                healthBar.textContent = Math.max(0, Math.round(currentHealth));
+                
